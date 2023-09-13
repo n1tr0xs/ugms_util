@@ -92,7 +92,8 @@ class MainWindow(QMainWindow):
         label = QLabel('Показатель гориморсти')
         self.layout.addWidget(label, 0, 1)
 
-        line = QLabel('-'*58)
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
         self.layout.addWidget(line, 1, 0, 1, 2)
         
         edit_validator = QRegExpValidator(QRegExp('\d+'))
