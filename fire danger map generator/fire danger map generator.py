@@ -3,7 +3,7 @@ import subprocess
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import *
 from PIL import Image, ImageDraw, ImageFont
-import pyperclip
+from PIL.ImageQt import ImageQt
 
 try:
     Image.open('blank.png')
@@ -88,15 +88,23 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Генератор карты пожароопасности')
         self.setWindowIcon(QIcon('icon.png'))
 
+        self.image = None
+        
         label = QLabel('Район')
+        label.setAlignment(Qt.AlignLeft)
         self.layout.addWidget(label, 0, 0)
 
         label = QLabel('Показатель гориморсти')
+        label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(label, 0, 1)
+
+        label = QLabel('Предпросмотр')
+        label.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(label, 0, 3, 1, 2)
 
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
-        self.layout.addWidget(line, 1, 0, 1, 2)
+        self.layout.addWidget(line, 1, 0, 1, 5)
         
         edit_validator = QRegExpValidator(QRegExp('\d+'))
         self.region_edit = {}
@@ -115,26 +123,30 @@ class MainWindow(QMainWindow):
         self.buttonSubmit.clicked.connect(self.drawPicture)
         self.layout.addWidget(self.buttonSubmit, i+1, 0, 1, 2)
 
-        self.progressLabel = QLabel()
-        self.layout.addWidget(self.progressLabel, i+2, 0)
-
-        self.buttonShowImage = QPushButton('Показать картинку')
+        self.buttonShowImage = QPushButton('Перейти к картинке')
         self.buttonShowImage.setEnabled(False)
-        self.buttonShowImage.clicked.connect(self.showFile)
-        self.layout.addWidget(self.buttonShowImage, i+2, 1)
+        self.buttonShowImage.clicked.connect(lambda x: subprocess.Popen(r'explorer /select,"Карта пожароопасности.png"'))
+        self.layout.addWidget(self.buttonShowImage, i+2, 0, 1, 2)
+
+        self.preview_image_height = 650
+        self.imageLabel = QLabel('')
+        self.layout.addWidget(self.imageLabel, 2, 3, len(regions)+2, 1)
+        self.imageLabel.setPixmap(
+            QtGui.QPixmap.fromImage(
+                ImageQt(Image.open("blank.png")).scaledToHeight(self.preview_image_height)
+            )
+        )
 
     def drawPicture(self):
         self.buttonShowImage.setEnabled(False)
-        self.progressLabel.setText(f'Прогресс: 0/{len(regions)}')
-        QApplication.processEvents()
         
         region_value = {}
         for region, edit in self.region_edit.items():
             try: region_value[region] = int(edit.text())
             except ValueError: region_value[region] = 0
         
-        image = Image.open('blank.png')
-        draw = ImageDraw.Draw(image)
+        self.image = Image.open('blank.png')
+        draw = ImageDraw.Draw(self.image)
         font = ImageFont.truetype('times.ttf', 42)
         draw.font = font
 
@@ -146,7 +158,7 @@ class MainWindow(QMainWindow):
             x, y = region_coords[region]
             fill_color = value_to_color(region_value[region])
             ImageDraw.floodfill(
-                image,
+                self.image,
                 (x, y),
                 fill_color
             )
@@ -171,15 +183,17 @@ class MainWindow(QMainWindow):
                 text=str(value_to_class(region_value[region])),
                 fill=text_color
             )
-            
-            self.progressLabel.setText(f'Прогресс: {i}/{len(regions)}')
+
+            self.imageLabel.setPixmap(
+                QtGui.QPixmap.fromImage(
+                    ImageQt(self.image).scaledToHeight(self.preview_image_height)
+                )
+            )
             QApplication.processEvents()
-            
-        self.progressLabel.setText('Все области обработаны!')
-        QApplication.processEvents()
-        image.save('Карта пожароопасности.png', 'PNG')
+        
+        self.image.save('Карта пожароопасности.png', 'PNG')
+        self.image.close()
         self.buttonShowImage.setEnabled(True)
-        image.close()
 
     def draw_text(self, draw, x, y, text='', fill=None):
         w, h = draw.font.font.getsize(text)[0]
@@ -189,9 +203,6 @@ class MainWindow(QMainWindow):
             fill=fill
         )
         return y+h
-
-    def showFile(self):
-        subprocess.Popen(r'explorer /select,"Карта пожароопасности.png"')        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
