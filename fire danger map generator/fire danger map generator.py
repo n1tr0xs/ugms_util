@@ -192,9 +192,8 @@ class MainWindow(QMainWindow):
         font = ImageFont.truetype('times.ttf', 42)
         draw.font = font
 
-        text_color = (0, 0, 0)
+        text_color = (0, 0, 0) # text color for regions, fire danger values
         y_padding = 10 # vertical spacing between text
-        
         for i, region in enumerate(regions, start=1):
             # filling area with color
             x, y = region_coords[region]
