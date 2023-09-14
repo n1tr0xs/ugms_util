@@ -3,6 +3,7 @@ import subprocess
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import *
 from PIL import Image, ImageDraw, ImageFont
+import pyperclip
 
 try:
     Image.open('blank.png')
@@ -118,10 +119,12 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.progressLabel, i+2, 0)
 
         self.buttonShowImage = QPushButton('Показать картинку')
+        self.buttonShowImage.setEnabled(False)
         self.buttonShowImage.clicked.connect(self.showFile)
         self.layout.addWidget(self.buttonShowImage, i+2, 1)
 
     def drawPicture(self):
+        self.buttonShowImage.setEnabled(False)
         self.progressLabel.setText(f'Прогресс: 0/{len(regions)}')
         QApplication.processEvents()
         
@@ -175,6 +178,7 @@ class MainWindow(QMainWindow):
         self.progressLabel.setText('Все области обработаны!')
         QApplication.processEvents()
         image.save('Карта пожароопасности.png', 'PNG')
+        self.buttonShowImage.setEnabled(True)
         image.close()
 
     def draw_text(self, draw, x, y, text='', fill=None):
@@ -187,7 +191,7 @@ class MainWindow(QMainWindow):
         return y+h
 
     def showFile(self):
-        subprocess.Popen(r'explorer /select,"Карта пожароопасности.png"')
+        subprocess.Popen(r'explorer /select,"Карта пожароопасности.png"')        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
