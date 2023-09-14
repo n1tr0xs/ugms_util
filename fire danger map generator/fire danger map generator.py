@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
         self.image = None
         self.preview_image_height = 650
         t = datetime.date.today()
-        self.image_name = f"{t.day:02}.{t.month:02}.{t.year:04}.png"
+        self.image_name = f"Карта пожарной опасности {t.day:02}.{t.month:02}.{t.year:04}.png"
         
         label = QLabel('Станция')
         label.setAlignment(Qt.AlignLeft)
