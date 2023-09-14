@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.layout = QGridLayout()
-        self.layout.setHorizontalSpacing(10)
+        self.layout.setHorizontalSpacing(50)
         self.centralWidget = QWidget()
         self.centralWidget.setLayout(self.layout)
         self.setCentralWidget(self.centralWidget)
