@@ -1,9 +1,18 @@
+import threading
 import sys
 import subprocess
+import datetime
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import *
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageQt import ImageQt
+
+def thread(my_func):
+    """  Runs a function in a separate thread. """
+    def wrapper(*args, **kwargs):
+        my_thread = threading.Thread(target=my_func, args=args, kwargs=kwargs)
+        my_thread.start()
+    return wrapper
 
 try:
     Image.open('blank.png')
@@ -11,6 +20,15 @@ except FileNotFoundError:
     with open('log.txt', 'a') as log:
         log.write('blank.png not found')
     exit(1)
+
+station_regions = {
+    u"Новопсков": [u"Новопсковский", u"Марковский", u"Белокуракинский", u"Старобельский"],
+    u"Троицкое": [u"Троицкий",],
+    u"Сватовский": [u"Кременской", u"Попаснянский", u"Сватовский",],
+    u"Луганск": [u"Перевальский", u"Краснодонский", u"Станично-Луганский", u"Новоайдарский", u"Славяносербский", u"Лутугинский",],
+    u"Беловодск": [u"Беловодский", u"Меловской",],
+    u"Дарьевка": [u"Антрацитовский", u"Свердловский",],
+}
 
 regions = [
     u"Троицкий",
@@ -81,6 +99,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.layout = QGridLayout()
+        self.layout.setHorizontalSpacing(10)
         self.centralWidget = QWidget()
         self.centralWidget.setLayout(self.layout)
         self.setCentralWidget(self.centralWidget)
@@ -89,62 +108,82 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon('icon.png'))
 
         self.image = None
+        self.preview_image_height = 650
+        t = datetime.date.today()
+        self.image_name = f"{t.day:02}.{t.month:02}.{t.year:04}.png"
         
-        label = QLabel('Район')
+        label = QLabel('Станция')
         label.setAlignment(Qt.AlignLeft)
         self.layout.addWidget(label, 0, 0)
 
+        label = QLabel('Районы')
+        self.layout.addWidget(label, 0, 1)
+
         label = QLabel('Показатель гориморсти')
         label.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(label, 0, 1)
+        self.layout.addWidget(label, 0, 2)
 
         label = QLabel('Предпросмотр')
         label.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(label, 0, 3, 1, 2)
+        self.layout.addWidget(label, 0, 4, 1, 2)
 
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         self.layout.addWidget(line, 1, 0, 1, 5)
         
         edit_validator = QRegExpValidator(QRegExp('\d+'))
-        self.region_edit = {}
-        for i, region in enumerate(regions, start=2):
-            # label for region
-            label = QLabel(region) 
+        self.station_edit = {}
+        i = 0
+        for station in station_regions:
+            i += 2
+            label = QLabel(station)
+            label.setFont(QFont('Times New Roman', 16))            
             self.layout.addWidget(label, i, 0)
 
-            # edit for region
-            edit = QLineEdit() 
+            label = QLabel('\n' + '\n'.join(region for region in station_regions[station]) + '\n')
+            label.setFont(QFont('Times New Roman', 16))            
+            self.layout.addWidget(label, i, 1)
+            
+            edit = QLineEdit()
             edit.setValidator(edit_validator)
-            self.layout.addWidget(edit, i, 1)
-            self.region_edit[region] = edit
-        
+            self.station_edit[station] = edit
+            self.layout.addWidget(edit, i, 2)
+
+            line = QFrame()
+            line.setFrameShape(QFrame.HLine)
+            self.layout.addWidget(line, i+1, 0, 1, 3)
+     
         self.buttonSubmit = QPushButton('Сгенерировать картинку')
         self.buttonSubmit.clicked.connect(self.drawPicture)
-        self.layout.addWidget(self.buttonSubmit, i+1, 0, 1, 2)
+        self.layout.addWidget(self.buttonSubmit, i+2, 0, 1, 3)
 
         self.buttonShowImage = QPushButton('Перейти к картинке')
         self.buttonShowImage.setEnabled(False)
-        self.buttonShowImage.clicked.connect(lambda x: subprocess.Popen(r'explorer /select,"Карта пожароопасности.png"'))
-        self.layout.addWidget(self.buttonShowImage, i+2, 0, 1, 2)
-
-        self.preview_image_height = 650
-        self.imageLabel = QLabel('')
-        self.layout.addWidget(self.imageLabel, 2, 3, len(regions)+2, 1)
+        self.buttonShowImage.clicked.connect(lambda x: subprocess.Popen(fr'explorer /select,"{self.image_name}"'))
+        self.layout.addWidget(self.buttonShowImage, i+3, 0, 1, 3)
+        
+        self.imageLabel = QLabel()
         self.imageLabel.setPixmap(
             QtGui.QPixmap.fromImage(
                 ImageQt(Image.open("blank.png")).scaledToHeight(self.preview_image_height)
             )
         )
+        self.layout.addWidget(self.imageLabel, 2, 4, len(regions), 1)
+        self.move(10, 10)
 
-    def drawPicture(self):
+    @thread
+    def drawPicture(self, *args):
+        print(*args)
         self.buttonShowImage.setEnabled(False)
-        
+        self.buttonSubmit.setEnabled(False)
+
         region_value = {}
-        for region, edit in self.region_edit.items():
-            try: region_value[region] = int(edit.text())
-            except ValueError: region_value[region] = 0
-        
+        for station, edit in self.station_edit.items():
+            try: val = int(edit.text())
+            except ValueError: val = 0
+            for region in station_regions[station]:
+                region_value[region] = val
+                
         self.image = Image.open('blank.png')
         draw = ImageDraw.Draw(self.image)
         font = ImageFont.truetype('times.ttf', 42)
@@ -190,10 +229,12 @@ class MainWindow(QMainWindow):
                 )
             )
             QApplication.processEvents()
-        
-        self.image.save('Карта пожароопасности.png', 'PNG')
+
+        self.image.save(self.image_name, 'PNG')
         self.image.close()
+
         self.buttonShowImage.setEnabled(True)
+        self.buttonSubmit.setEnabled(True)
 
     def draw_text(self, draw, x, y, text='', fill=None):
         w, h = draw.font.font.getsize(text)[0]
@@ -203,7 +244,7 @@ class MainWindow(QMainWindow):
             fill=fill
         )
         return y+h
-
+    
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
