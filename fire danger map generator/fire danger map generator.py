@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import *
 from PIL import Image, ImageDraw, ImageFont
@@ -114,7 +115,11 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.buttonSubmit, i+1, 0, 1, 2)
 
         self.progressLabel = QLabel()
-        self.layout.addWidget(self.progressLabel, i+2, 0, 1, 2)
+        self.layout.addWidget(self.progressLabel, i+2, 0)
+
+        self.buttonShowImage = QPushButton('Показать картинку')
+        self.buttonShowImage.clicked.connect(self.showFile)
+        self.layout.addWidget(self.buttonShowImage, i+2, 1)
 
     def drawPicture(self):
         self.progressLabel.setText(f'Прогресс: 0/{len(regions)}')
@@ -143,21 +148,21 @@ class MainWindow(QMainWindow):
                 fill_color
             )
             # printing name of region
-            y = self.mydraw(
+            y = self.draw_text(
                 draw,
                 x, y,
                 text=str(region),
                 fill=text_color
             )
             # printing fire danger factor
-            y = self.mydraw(
+            y = self.draw_text(
                 draw,
                 x, y + y_padding,
                 text=str(region_value[region]),
                 fill=text_color
             )
             # printing fire danger class
-            y = self.mydraw(
+            y = self.draw_text(
                 draw,
                 x, y + y_padding,
                 text=str(value_to_class(region_value[region])),
@@ -172,7 +177,7 @@ class MainWindow(QMainWindow):
         image.save('Карта пожароопасности.png', 'PNG')
         image.close()
 
-    def mydraw(self, draw, x, y, text='', fill=None):
+    def draw_text(self, draw, x, y, text='', fill=None):
         w, h = draw.font.font.getsize(text)[0]
         draw.text(
             (x - w//2, y - h//2),
@@ -180,6 +185,9 @@ class MainWindow(QMainWindow):
             fill=fill
         )
         return y+h
+
+    def showFile(self):
+        subprocess.Popen(r'explorer /select,"Карта пожароопасности.png"')
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
