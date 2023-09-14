@@ -100,10 +100,13 @@ class MainWindow(QMainWindow):
 
         self.layout = QGridLayout()
         self.layout.setHorizontalSpacing(50)
+
         self.centralWidget = QWidget()
         self.centralWidget.setLayout(self.layout)
         self.setCentralWidget(self.centralWidget)
+
         self.setFont(QFont('Times New Roman', 16))
+
         self.setWindowTitle('Генератор карты пожароопасности')
         self.setWindowIcon(QIcon('icon.png'))
 
@@ -139,11 +142,7 @@ class MainWindow(QMainWindow):
             label = QLabel(station)
             self.layout.addWidget(label, i, 0)
 
-            label = QLabel(
-                '\n' +
-                '\n'.join(region for region in station_regions[station]) +
-                '\n'
-            )
+            label = QLabel('\n' + '\n'.join(region for region in station_regions[station]) + '\n')
             self.layout.addWidget(label, i, 1)
             
             edit = QLineEdit()
