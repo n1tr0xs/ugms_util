@@ -1,7 +1,7 @@
-import threading
 import sys
 import subprocess
 import datetime
+import threading
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.Qt import *
 from PIL import Image, ImageDraw, ImageFont
@@ -15,7 +15,7 @@ def thread(my_func):
     return wrapper
 
 try:
-    Image.open('blank.png')
+    open('blank.png')
 except FileNotFoundError:
     with open('log.txt', 'a') as log:
         log.write('blank.png not found')
@@ -137,11 +137,13 @@ class MainWindow(QMainWindow):
         for station in station_regions:
             i += 2
             label = QLabel(station)
-            label.setFont(QFont('Times New Roman', 16))            
             self.layout.addWidget(label, i, 0)
 
-            label = QLabel('\n' + '\n'.join(region for region in station_regions[station]) + '\n')
-            label.setFont(QFont('Times New Roman', 16))            
+            label = QLabel(
+                '\n' +
+                '\n'.join(region for region in station_regions[station]) +
+                '\n'
+            )
             self.layout.addWidget(label, i, 1)
             
             edit = QLineEdit()
@@ -173,16 +175,18 @@ class MainWindow(QMainWindow):
 
     @thread
     def drawPicture(self, *args):
-        print(*args)
         self.buttonShowImage.setEnabled(False)
         self.buttonSubmit.setEnabled(False)
 
         region_value = {}
         for station, edit in self.station_edit.items():
-            try: val = int(edit.text())
-            except ValueError: val = 0
-            for region in station_regions[station]:
-                region_value[region] = val
+            try:
+                val = int(edit.text())
+            except ValueError:
+                val = 0
+            finally:
+                for region in station_regions[station]:
+                    region_value[region] = val
                 
         self.image = Image.open('blank.png')
         draw = ImageDraw.Draw(self.image)
