@@ -1,1 +1,1 @@
-# ugms_util
+This repositroy created for containing sources of small programs created in "УГМС по ЛНР".
