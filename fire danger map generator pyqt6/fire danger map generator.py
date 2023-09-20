@@ -1,39 +1,13 @@
 import sys
 import subprocess
 import datetime
-import threading
+
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
 from PyQt6.QtWidgets import *
+
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageQt import ImageQt
-
-class Worker(QtCore.QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-        # Store constructor arguments (re-used for processing)
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-
-    def run(self):
-        '''
-        Initialise the runner function with passed args, kwargs.
-        '''
-        self.fn(*self.args, **self.kwargs)
 
 try:
     open('blank.png')
@@ -94,6 +68,9 @@ region_coords = {
 }
 
 def value_to_color(value):
+    '''
+    Converts fire danger value to color.
+    '''
     if value > 10000:
         return (255, 0, 0)
     if value > 4000:
@@ -105,6 +82,9 @@ def value_to_color(value):
     return (146, 208, 80)
 
 def value_to_class(value):
+    '''
+    Converts fire danger value to fire danger class.
+    '''
     if value > 10000:
         return 'V'
     if value > 4000:
@@ -115,10 +95,78 @@ def value_to_class(value):
         return 'II'
     return 'I'
 
+class WorkerSignals(QObject):
+    '''
+    Defines the signals available from a running worker thread.
+    Supported signals are:
+
+    finished
+        No data
+    error
+        tuple (exctype, value, traceback.format_exc() )
+    result
+        object data returned from processing
+    progress
+        ImageQt to draw
+    '''
+    finished = pyqtSignal()
+    error = pyqtSignal(tuple)
+    result = pyqtSignal(object)
+    progress = pyqtSignal(ImageQt)
+
+
+class Worker(QRunnable):
+    '''
+    Worker thread
+
+    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
+
+    :param callback: The function callback to run on this worker thread. Supplied args and
+                     kwargs will be passed through to the runner.
+    :type callback: function
+    :param args: Arguments to pass to the callback function
+    :param kwargs: Keywords to pass to the callback function
+
+    '''
+
+    def __init__(self, fn, *args, **kwargs):
+        super(Worker, self).__init__()
+        # Store constructor arguments (re-used for processing)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+        
+        # Add the callback to our kwargs
+        self.kwargs['progress_callback'] = self.signals.progress
+
+    @pyqtSlot()
+    def run(self):
+        '''
+        Initialise the runner function with passed args, kwargs.
+        '''
+
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+        except:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
+            
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
+        
+        self.threadpool = QThreadPool()
+        self.preview_image_height = 650
+        t = datetime.date.today()
+        self.image_name = f"Карта пожарной опасности {t.day:02}.{t.month:02}.{t.year:04}.png"
+                
         self.layout = QGridLayout()
         self.layout.setHorizontalSpacing(20)
 
@@ -131,11 +179,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Генератор карты пожароопасности')
         self.setWindowIcon(QtGui.QIcon('icon.png'))
 
-        self.image = None
-        self.preview_image_height = 650
-        t = datetime.date.today()
-        self.image_name = f"Карта пожарной опасности {t.day:02}.{t.month:02}.{t.year:04}.png"
-        
         label = QLabel('Станция')
         self.layout.addWidget(label, 0, 0)
 
@@ -175,7 +218,7 @@ class MainWindow(QMainWindow):
             self.layout.addWidget(line, i+1, 0, 1, 3)
      
         self.buttonSubmit = QPushButton('Сгенерировать картинку')
-        self.buttonSubmit.clicked.connect(self.drawPicture)
+        self.buttonSubmit.clicked.connect(self.start_draw)
         self.layout.addWidget(self.buttonSubmit, i+2, 0, 1, 3)
 
         self.buttonShowImage = QPushButton('Перейти к картинке')
@@ -184,22 +227,26 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.buttonShowImage, i+3, 0, 1, 3)
         
         self.imageLabel = QLabel()
-        self.imageLabel.setPixmap(
-            QtGui.QPixmap.fromImage(
-                ImageQt(Image.open("blank.png")).scaledToHeight(self.preview_image_height)
-            )
-        )
+        self.redraw_preview(ImageQt(Image.open("blank.png")))
         self.layout.addWidget(self.imageLabel, 2, 4, len(regions), 1)
+        
         self.move(10, 10)
+        self.show()
 
-    def start_draw(self, *args):
-        worker = Worker(self.drawPicture)
+    def start_draw(self):
+        '''
+        Starts the draw function worker in another Thread.
+        '''
+        self.buttonSubmit.setEnabled(False)
+        worker = Worker(self.draw)
+        worker.signals.finished.connect(self.drawing_complete)
+        worker.signals.progress.connect(self.redraw_preview)
         self.threadpool.start(worker)
 
-    def drawPicture(self, *args):
-        self.buttonShowImage.setEnabled(False)
-        self.buttonSubmit.setEnabled(False)
-
+    def draw(self, progress_callback):
+        '''
+        Draws image.
+        '''
         region_value = {}
         for station, edit in self.station_edit.items():
             try:
@@ -209,69 +256,63 @@ class MainWindow(QMainWindow):
             finally:
                 for region in station_regions[station]:
                     region_value[region] = val
-                
+        
         self.image = Image.open('blank.png')
         draw = ImageDraw.Draw(self.image)
         font = ImageFont.truetype('times.ttf', 42)
         draw.font = font
-
+        
         text_color = (0, 0, 0) # text color for regions, fire danger values
         y_padding = 10 # vertical spacing between text
         for i, region in enumerate(regions, start=1):
             # filling area with color
             x, y = region_coords[region]
             fill_color = value_to_color(region_value[region])
-            ImageDraw.floodfill(
-                self.image,
-                (x, y),
-                fill_color
-            )
+            ImageDraw.floodfill(self.image, (x, y), fill_color)
             # printing name of region
-            y = self.draw_text(
-                draw,
-                x, y,
-                text=str(region),
-                fill=text_color
-            )
+            text = str(region)
+            y = self.draw_text(draw, x, y, text=text, fill=text_color)
             # printing fire danger factor
-            y = self.draw_text(
-                draw,
-                x, y + y_padding,
-                text=str(region_value[region]),
-                fill=text_color
-            )
+            text = str(region_value[region])
+            y = self.draw_text(draw, x, y + y_padding, text=text, fill=text_color)
             # printing fire danger class
-            y = self.draw_text(
-                draw,
-                x, y + y_padding,
-                text=str(value_to_class(region_value[region])),
-                fill=text_color
-            )
-
-            self.imageLabel.setPixmap(
-                QtGui.QPixmap.fromImage(
-                    ImageQt(self.image).scaledToHeight(self.preview_image_height)
-                )
-            )
-            QApplication.processEvents()
-
+            text = str(value_to_class(region_value[region]))
+            y = self.draw_text(draw, x, y + y_padding, text=text, fill=text_color)
+            # calling callback to redraw preview
+            progress_callback.emit(ImageQt(self.image))
+            
+        return self.image
+        
+    def draw_text(self, draw, x, y, text='', fill=None):
+        '''
+        Draws given text at (x, y).
+        (x, y) the center anchor.
+        '''
+        w, h = draw.font.font.getsize(text)[0]
+        draw.text((x - w//2, y - h//2), str(text), fill=fill)
+        return y+h
+        
+    def redraw_preview(self, image):
+        '''
+        Redraws preview from given image.
+        '''
+        self.imageLabel.setPixmap(QtGui.QPixmap.fromImage(image.scaledToHeight(self.preview_image_height)))
+        
+    def drawing_complete(self, k):
+        '''
+        Handling end of drawing process; after it do the follows:
+        1) Saving created image.
+        2) Closing image file handler.
+        3) Enabling buttonShowImage.
+        4) Enabling buttonSubmit.
+        '''
         self.image.save(self.image_name, 'PNG')
         self.image.close()
 
         self.buttonShowImage.setEnabled(True)
         self.buttonSubmit.setEnabled(True)
-
-    def draw_text(self, draw, x, y, text='', fill=None):
-        w, h = draw.font.font.getsize(text)[0]
-        draw.text(
-            (x - w//2, y - h//2),
-            str(text),
-            fill=fill
-        )
-        return y+h
-    
+        
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
-    w.show()
     sys.exit(app.exec())
