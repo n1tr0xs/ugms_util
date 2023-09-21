@@ -48,10 +48,10 @@ regions = [
 
 region_coords = {
     u"Троицкий": (415, 323),
-    u"Белокуракинский": (710, 557),
-    u"Новопсковский": (1060, 465),
+    u"Белокуракинский": (710, 580),
+    u"Новопсковский": (1100, 465),
     u"Марковский": (1440, 557),
-    u"Меловской": (1760, 660),
+    u"Меловской": (1760, 690),
     u"Сватовский": (300, 815),
     u"Старобельский": (945, 950),
     u"Беловодский": (1500, 917),
@@ -59,12 +59,12 @@ region_coords = {
     u"Новоайдарский": (1081, 1313),
     u"Станично-Луганский": (1530, 1440),
     u"Попаснянский": (700, 1630),
-    u"Славяносербский": (1110, 1680),
-    u"Перевальский": (960, 1985),
+    u"Славяносербский": (1100, 1680),
+    u"Перевальский": (960, 2005),
     u"Лутугинский": (1370, 1975),
     u"Краснодонский": (1750, 1923),
     u"Антрацитовский": (1277, 2307),
-    u"Свердловский": (1800, 2355),
+    u"Свердловский": (1780, 2340),
 }
 
 def value_to_color(value):
@@ -230,7 +230,23 @@ class MainWindow(QMainWindow):
         self.redraw_preview(ImageQt(Image.open("blank.png")))
         self.layout.addWidget(self.imageLabel, 2, 4, len(regions), 1)
         
-        self.move(10, 10)
+        self.settings = QtCore.QSettings('n1tr0xs', 'fire map generator')
+        geometry = self.settings.value("geometry", QtCore.QByteArray())
+        if not geometry.isEmpty():
+            if isinstance(geometry, QtCore.QByteArray):
+                self.restoreGeometry(geometry)
+            else:
+                self.restoreGeometry(geometry.toByteArray())
+        print(geometry)
+
+        windowState = self.settings.value("windowState", QtCore.QByteArray())
+        if not windowState.isEmpty():
+            if isinstance(windowState, QtCore.QByteArray):
+                self.restoreState(windowState)
+            else:
+                self.restoreState(windowState.toByteArray())
+        print(windowState)
+        
         self.show()
 
     def start_draw(self):
@@ -269,28 +285,15 @@ class MainWindow(QMainWindow):
             x, y = region_coords[region]
             fill_color = value_to_color(region_value[region])
             ImageDraw.floodfill(self.image, (x, y), fill_color)
-            # printing name of region
-            text = str(region)
-            y = self.draw_text(draw, x, y, text=text, fill=text_color)
-            # printing fire danger factor
-            text = str(region_value[region])
-            y = self.draw_text(draw, x, y + y_padding, text=text, fill=text_color)
-            # printing fire danger class
-            text = str(value_to_class(region_value[region]))
-            y = self.draw_text(draw, x, y + y_padding, text=text, fill=text_color)
+
+            # draws the text
+            info_to_display = (region, region_value[region], value_to_class(region_value[region]))
+            text = '\n'.join(map(str, info_to_display))
+            draw.multiline_text((x, y), text=text, fill=text_color, anchor='mm', align='center')
             # calling callback to redraw preview
             progress_callback.emit(ImageQt(self.image))
             
         return self.image
-        
-    def draw_text(self, draw, x, y, text='', fill=None):
-        '''
-        Draws given text at (x, y).
-        (x, y) the center anchor.
-        '''
-        w, h = draw.font.font.getsize(text)[0]
-        draw.text((x - w//2, y - h//2), str(text), fill=fill)
-        return y+h
         
     def redraw_preview(self, image):
         '''
@@ -298,7 +301,7 @@ class MainWindow(QMainWindow):
         '''
         self.imageLabel.setPixmap(QtGui.QPixmap.fromImage(image.scaledToHeight(self.preview_image_height)))
         
-    def drawing_complete(self, k):
+    def drawing_complete(self):
         '''
         Handling end of drawing process; after it do the follows:
         1) Saving created image.
@@ -306,11 +309,15 @@ class MainWindow(QMainWindow):
         3) Enabling buttonShowImage.
         4) Enabling buttonSubmit.
         '''
-        self.image.save(self.image_name, 'PNG')
-        self.image.close()
+        self.image.save(self.image_name, 'PNG') # 1
+        self.image.close() # 2
+        self.buttonShowImage.setEnabled(True) # 3
+        self.buttonSubmit.setEnabled(True) # 4
 
-        self.buttonShowImage.setEnabled(True)
-        self.buttonSubmit.setEnabled(True)
+    def closeEvent(self, event):
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("windowState", self.saveState())
+        super().closeEvent(event)
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
