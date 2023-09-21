@@ -26,27 +26,6 @@ station_regions = {
     u"Дарьевка": [u"Антрацитовский", u"Свердловский",],
 }
 
-regions = [
-    u"Троицкий",
-    u"Белокуракинский",
-    u"Новопсковский",
-    u"Марковский",
-    u"Меловской",
-    u"Сватовский",
-    u"Старобельский",
-    u"Беловодский",
-    u"Кременской",
-    u"Новоайдарский",
-    u"Станично-Луганский",
-    u"Попаснянский",
-    u"Славяносербский",
-    u"Перевальский",
-    u"Лутугинский",
-    u"Краснодонский",
-    u"Антрацитовский",
-    u"Свердловский",
-]
-
 region_coords = {
     u"Троицкий": (415, 323),
     u"Белокуракинский": (710, 580),
@@ -112,7 +91,7 @@ class WorkerSignals(QObject):
     '''
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
+    result = pyqtSignal()
     progress = pyqtSignal(ImageQt)
 
 
@@ -127,9 +106,7 @@ class Worker(QRunnable):
     :type callback: function
     :param args: Arguments to pass to the callback function
     :param kwargs: Keywords to pass to the callback function
-
     '''
-
     def __init__(self, fn, *args, **kwargs):
         super(Worker, self).__init__()
         # Store constructor arguments (re-used for processing)
@@ -146,7 +123,6 @@ class Worker(QRunnable):
         '''
         Initialise the runner function with passed args, kwargs.
         '''
-
         # Retrieve args/kwargs here; and fire processing using them
         try:
             result = self.fn(*self.args, **self.kwargs)
@@ -155,16 +131,50 @@ class Worker(QRunnable):
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            self.signals.result.emit(result)  # Return the result of the processing
+            self.signals.result.emit()  # Return the result of the processing
         finally:
             self.signals.finished.emit()  # Done
-            
+
+class HLine(QFrame):
+    def __init__(self):
+        '''
+        Creates horizontal line shaped QFrame
+        '''
+        super().__init__()
+        self.setFrameShape(QFrame.Shape.HLine)
+
+class IntLineEdit(QLineEdit):
+    validator = QtGui.QIntValidator()
+    
+    def __init__(self):
+        '''
+        Creates QLineEdit with QIntValidator.
+        '''
+        super().__init__()
+        self.setValidator(self.validator)
+
+    def getInt(self, default:int=0):
+        '''
+        Returns integer value of input text or `default` value if it's can't be converted.
+        '''
+        try:
+            return int(self.text())
+        except ValueError:
+            return default
+        
+        
+
 class MainWindow(QMainWindow):
     def __init__(self):
+        '''
+        Creates main window.
+        '''
         super().__init__()
         
+        self.settings = QtCore.QSettings('n1tr0xs', 'fire danger map generator')
         self.threadpool = QThreadPool()
         self.preview_image_height = 650
+        self.preview_image_vertical_span = sum(len(value) for value in station_regions.values())
         t = datetime.date.today()
         self.image_name = f"Карта пожарной опасности {t.day:02}.{t.month:02}.{t.year:04}.png"
                 
@@ -194,8 +204,7 @@ class MainWindow(QMainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.layout.addWidget(label, 0, 4, 1, 2)
 
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
+        line = HLine()
         self.layout.addWidget(line, 1, 0, 1, 5)
         
         edit_validator = QtGui.QIntValidator()
@@ -203,19 +212,18 @@ class MainWindow(QMainWindow):
         i = 0
         for station in station_regions:
             i += 2
+
             label = QLabel(station)
             self.layout.addWidget(label, i, 0)
 
             label = QLabel('\n' + '\n'.join(region for region in station_regions[station]) + '\n')
             self.layout.addWidget(label, i, 1)
             
-            edit = QLineEdit()
-            edit.setValidator(edit_validator)
+            edit = IntLineEdit()
             self.station_edit[station] = edit
             self.layout.addWidget(edit, i, 2)
 
-            line = QFrame()
-            line.setFrameShape(QFrame.Shape.HLine)
+            line = HLine()
             self.layout.addWidget(line, i+1, 0, 1, 3)
      
         self.buttonSubmit = QPushButton('Сгенерировать картинку')
@@ -229,63 +237,44 @@ class MainWindow(QMainWindow):
         
         self.imageLabel = QLabel()
         self.redraw_preview(ImageQt(Image.open("blank.png")))
-        self.layout.addWidget(self.imageLabel, 2, 4, len(regions), 1)
+        self.layout.addWidget(self.imageLabel, 2, 4, self.preview_image_vertical_span, 1)
         
-
-        self.settings = QtCore.QSettings('n1tr0xs', 'fire map generator')
-        geometry = self.settings.value("geometry", type=QtCore.QByteArray)            
-        if not geometry.isEmpty():
-            self.restoreGeometry(geometry)
-
-        windowState = self.settings.value("windowState", type=QtCore.QByteArray)
-        if not windowState.isEmpty():
-            self.restoreState(windowState)
-        
+        self.restore_settings()
         self.show()
-
+        
     def start_draw(self):
         '''
         Starts the draw function worker in another Thread.
+        Binds signals of worker.
         '''
         self.buttonSubmit.setEnabled(False)
         worker = Worker(self.draw)
-        worker.signals.finished.connect(self.drawing_complete)
         worker.signals.progress.connect(self.redraw_preview)
+        worker.signals.finished.connect(self.drawing_complete)
         self.threadpool.start(worker)
 
     def draw(self, progress_callback):
         '''
-        Draws image.
+        Draws the image.
         '''
-        region_value = {}
-        for station, edit in self.station_edit.items():
-            try:
-                val = int(edit.text())
-            except ValueError:
-                val = 0
-            finally:
-                for region in station_regions[station]:
-                    region_value[region] = val
-        
         self.image = Image.open('blank.png')
         draw = ImageDraw.Draw(self.image)
-        font = ImageFont.truetype('times.ttf', 42)
-        draw.font = font
+        draw.font = ImageFont.truetype('times.ttf', 42)
+        text_color = (0, 0, 0)
         
-        text_color = (0, 0, 0) # text color for regions, fire danger values
-        y_padding = 10 # vertical spacing between text
-        for i, region in enumerate(regions, start=1):
-            # filling area with color
-            x, y = region_coords[region]
-            fill_color = value_to_color(region_value[region])
-            ImageDraw.floodfill(self.image, (x, y), fill_color)
-
-            # draws the text
-            info_to_display = (region, region_value[region], value_to_class(region_value[region]))
-            text = '\n'.join(map(str, info_to_display))
-            draw.multiline_text((x, y), text=text, fill=text_color, anchor='mm', align='center')
-            # calling callback to redraw preview
-            progress_callback.emit(ImageQt(self.image))
+        for station, edit in self.station_edit.items():
+            value = edit.getInt()
+            for region in station_regions[station]:
+                # filling area with color
+                x, y = region_coords[region]
+                fill_color = value_to_color(value)
+                ImageDraw.floodfill(self.image, (x, y), fill_color)
+                # drawing the text
+                info_to_display = (region, value, value_to_class(value))
+                text = '\n'.join(map(str, info_to_display))
+                draw.multiline_text((x, y), text=text, fill=text_color, anchor='mm', align='center')
+                # callback to redraw preview
+                progress_callback.emit(ImageQt(self.image))
         
     def redraw_preview(self, image):
         '''
@@ -307,9 +296,20 @@ class MainWindow(QMainWindow):
         self.buttonSubmit.setEnabled(True) # 4
 
     def closeEvent(self, event):
-        self.settings.setValue("geometry", self.saveGeometry())
-        self.settings.setValue("windowState", self.saveState())
+        self.save_settings()
         super().closeEvent(event)
+        
+    def save_settings(self):
+        '''
+        Saves current window geometry.
+        '''
+        self.settings.setValue("geometry", self.saveGeometry())
+
+    def restore_settings(self):
+        '''
+        Restores last window geometry.
+        '''
+        self.restoreGeometry(self.settings.value("geometry", type=QtCore.QByteArray))
         
 if __name__ == "__main__":
     app = QApplication(sys.argv)
