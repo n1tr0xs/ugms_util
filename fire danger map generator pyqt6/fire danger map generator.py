@@ -1,6 +1,7 @@
 import sys
 import subprocess
 import datetime
+import traceback
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
@@ -230,22 +231,15 @@ class MainWindow(QMainWindow):
         self.redraw_preview(ImageQt(Image.open("blank.png")))
         self.layout.addWidget(self.imageLabel, 2, 4, len(regions), 1)
         
-        self.settings = QtCore.QSettings('n1tr0xs', 'fire map generator')
-        geometry = self.settings.value("geometry", QtCore.QByteArray())
-        if not geometry.isEmpty():
-            if isinstance(geometry, QtCore.QByteArray):
-                self.restoreGeometry(geometry)
-            else:
-                self.restoreGeometry(geometry.toByteArray())
-        print(geometry)
 
-        windowState = self.settings.value("windowState", QtCore.QByteArray())
+        self.settings = QtCore.QSettings('n1tr0xs', 'fire map generator')
+        geometry = self.settings.value("geometry", type=QtCore.QByteArray)            
+        if not geometry.isEmpty():
+            self.restoreGeometry(geometry)
+
+        windowState = self.settings.value("windowState", type=QtCore.QByteArray)
         if not windowState.isEmpty():
-            if isinstance(windowState, QtCore.QByteArray):
-                self.restoreState(windowState)
-            else:
-                self.restoreState(windowState.toByteArray())
-        print(windowState)
+            self.restoreState(windowState)
         
         self.show()
 
@@ -292,8 +286,6 @@ class MainWindow(QMainWindow):
             draw.multiline_text((x, y), text=text, fill=text_color, anchor='mm', align='center')
             # calling callback to redraw preview
             progress_callback.emit(ImageQt(self.image))
-            
-        return self.image
         
     def redraw_preview(self, image):
         '''
