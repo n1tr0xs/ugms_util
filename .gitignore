@@ -1,3 +1,7 @@
-*/dist
-*/build
-*/*.spec
+fire danger map generator win7/source/build/
+fire danger map generator win7/source/dist/
+fire danger map generator win7/source/fire danger map generator.spec
+
+fire danger map generator/source/build/
+fire danger map generator/source/dist/
+fire danger map generator/source/fire danger map generator.spec
