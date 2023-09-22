@@ -134,6 +134,7 @@ class Worker(QRunnable):
         finally:
             self.signals.finished.emit()  # Done
 
+
 class HLine(QFrame):
     def __init__(self):
         '''
@@ -141,6 +142,7 @@ class HLine(QFrame):
         '''
         super().__init__()
         self.setFrameShape(QFrame.Shape.HLine)
+
 
 class IntLineEdit(QLineEdit):
     validator = QtGui.QIntValidator()
@@ -161,6 +163,7 @@ class IntLineEdit(QLineEdit):
         except ValueError:
             return default
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         '''
@@ -170,8 +173,6 @@ class MainWindow(QMainWindow):
         
         self.settings = QtCore.QSettings('n1tr0xs', 'fire danger map generator')
         self.threadpool = QThreadPool()
-        self.preview_image_height = 650
-        self.preview_image_vertical_span = sum(len(value) for value in station_regions.values())
         t = datetime.date.today()
         self.image_name = f"Карта пожарной опасности {t.day:02}.{t.month:02}.{t.year:04}.png"
                 
@@ -199,7 +200,7 @@ class MainWindow(QMainWindow):
 
         label = QLabel('Предпросмотр')
         label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.layout.addWidget(label, 0, 4, 1, 2)
+        self.layout.addWidget(label, 0, 3, 1, 2)
 
         line = HLine()
         self.layout.addWidget(line, 1, 0, 1, 5)
@@ -213,7 +214,7 @@ class MainWindow(QMainWindow):
             label = QLabel(station)
             self.layout.addWidget(label, i, 0)
 
-            label = QLabel('\n' + '\n'.join(region for region in station_regions[station]) + '\n')
+            label = QLabel('\n'.join(region for region in station_regions[station]))
             self.layout.addWidget(label, i, 1)
             
             edit = IntLineEdit()
@@ -229,15 +230,19 @@ class MainWindow(QMainWindow):
 
         self.buttonShowImage = QPushButton('Перейти к картинке')
         self.buttonShowImage.setEnabled(False)
-        self.buttonShowImage.clicked.connect(lambda x: subprocess.Popen(fr'explorer /select,"{self.image_name}"'))
+        self.buttonShowImage.clicked.connect(
+            lambda x: subprocess.Popen(fr'explorer /select,"{self.image_name}"')
+        )
         self.layout.addWidget(self.buttonShowImage, i+3, 0, 1, 3)
-        
-        self.imageLabel = QLabel()
-        self.redraw_preview(ImageQt(Image.open("blank.png")))
-        self.layout.addWidget(self.imageLabel, 2, 4, self.preview_image_vertical_span, 1)
         
         self.restore_settings()
         self.show()
+
+        self.preview_image_height = self.sizeHint().height()
+        self.imageLabel = QLabel()
+        self.redraw_preview(ImageQt(Image.open("blank.png")))
+        self.layout.addWidget(self.imageLabel, 2, 3, len(station_regions.keys())*2+2, 2)
+        self.setFixedSize(self.sizeHint())
         
     def start_draw(self):
         '''
@@ -307,7 +312,8 @@ class MainWindow(QMainWindow):
         Restores last window geometry.
         '''
         self.restoreGeometry(self.settings.value("geometry", type=QtCore.QByteArray))
-        
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
