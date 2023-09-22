@@ -1,4 +1,3 @@
-fire danger map generator/dist
-fire danger map generator/build
-fire danger map generator/Карта пожароопасности.png
-fire danger map generator/fire danger map generator.spec
+*/dist
+*/build
+*/*.spec
