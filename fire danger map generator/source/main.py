@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
                 # callback to redraw preview
                 progress_callback.emit(ImageQt(self.image))
         
-    def redraw_preview(self, image):
+    def redraw_preview(self, image:ImageQt):
         '''
         Redraws preview from given image.
         '''
@@ -298,7 +298,8 @@ class MainWindow(QMainWindow):
         self.buttonShowImage.setEnabled(True) # 3
         self.buttonSubmit.setEnabled(True) # 4
 
-    def closeEvent(self, event):
+    def closeEvent(self, event:QtGui.QCloseEvent):
+        print(type(event))
         self.save_settings()
         super().closeEvent(event)
         
