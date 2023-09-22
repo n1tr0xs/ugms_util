@@ -160,8 +160,6 @@ class IntLineEdit(QLineEdit):
             return int(self.text())
         except ValueError:
             return default
-        
-        
 
 class MainWindow(QMainWindow):
     def __init__(self):
