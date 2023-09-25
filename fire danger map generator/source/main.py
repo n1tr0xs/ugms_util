@@ -2,6 +2,7 @@ import sys
 import subprocess
 import datetime
 import traceback
+import json
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
@@ -17,35 +18,16 @@ except FileNotFoundError:
         log.write('blank.png not found')
     exit(1)
 
-station_regions = {
-    u"Новопсков": [u"Новопсковский", u"Марковский", u"Белокуракинский", u"Старобельский"],
-    u"Троицкое": [u"Троицкий",],
-    u"Сватовский": [u"Кременской", u"Попаснянский", u"Сватовский",],
-    u"Луганск": [u"Перевальский", u"Краснодонский", u"Станично-Луганский", u"Новоайдарский", u"Славяносербский", u"Лутугинский",],
-    u"Беловодск": [u"Беловодский", u"Меловской",],
-    u"Дарьевка": [u"Антрацитовский", u"Свердловский",],
-}
-
-region_coords = {
-    u"Троицкий": (415, 323),
-    u"Белокуракинский": (710, 580),
-    u"Новопсковский": (1100, 465),
-    u"Марковский": (1440, 557),
-    u"Меловской": (1760, 690),
-    u"Сватовский": (300, 815),
-    u"Старобельский": (945, 950),
-    u"Беловодский": (1500, 917),
-    u"Кременской": (490, 1160),
-    u"Новоайдарский": (1081, 1313),
-    u"Станично-Луганский": (1530, 1440),
-    u"Попаснянский": (700, 1630),
-    u"Славяносербский": (1100, 1680),
-    u"Перевальский": (960, 2005),
-    u"Лутугинский": (1370, 1975),
-    u"Краснодонский": (1750, 1923),
-    u"Антрацитовский": (1277, 2307),
-    u"Свердловский": (1780, 2340),
-}
+try:
+    with open('station_regions.txt', 'r', encoding='utf-8') as fin:
+        station_regions = json.loads(fin.read())
+except FileNotFoundError:
+    print('station_regions.txt not found')
+try:
+    with open('region_coords.txt', 'r', encoding='utf-8') as fin:
+        region_coords = json.loads(fin.read())
+except FileNotFoundError:
+    print('station_regions.txt not found')
 
 def value_to_color(value):
     '''
@@ -206,7 +188,6 @@ class MainWindow(QMainWindow):
         line = HLine()
         self.layout.addWidget(line, 1, 0, 1, 5)
         
-        edit_validator = QtGui.QIntValidator()
         self.station_edit = {}
         i = 0
         for station in station_regions:
@@ -299,7 +280,6 @@ class MainWindow(QMainWindow):
         self.buttonSubmit.setEnabled(True) # 4
 
     def closeEvent(self, event:QtGui.QCloseEvent):
-        print(type(event))
         self.save_settings()
         super().closeEvent(event)
         
