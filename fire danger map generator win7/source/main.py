@@ -205,7 +205,6 @@ class MainWindow(QMainWindow):
         line = HLine()
         self.layout.addWidget(line, 1, 0, 1, 5)
         
-        edit_validator = QtGui.QIntValidator()
         self.station_edit = {}
         i = 0
         for station in station_regions:
