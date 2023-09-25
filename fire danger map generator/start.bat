@@ -1,1 +1,1 @@
-@cmd /K "Scripts\activate.bat && cd source\"
+@cmd /K "Scripts\activate.bat && cd source\" && set PROMPT=(fire danger map generator)
