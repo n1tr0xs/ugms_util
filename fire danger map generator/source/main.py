@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         
         self.settings = QtCore.QSettings('n1tr0xs', 'fire danger map generator')
-        self.threadpool = QThreadPool()
+        self.threadpool = QThreadPool.globalInstance()
         t = datetime.date.today()
         self.image_name = f"Карта пожарной опасности {t.day:02}.{t.month:02}.{t.year:04}.png"
                 
