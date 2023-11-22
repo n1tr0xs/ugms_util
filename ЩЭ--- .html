@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title></title>
+	<script type="text/javascript">
+		function gen(){
+			const strings = document.getElementById('inp').value.split('=\n');
+			const prefix = document.getElementById('pref').value;
+			let res = '';
+			strings.forEach(string => { res += prefix + ' ' + string + '=\n'; });
+			document.getElementById('out').value = res.substr(0, res.length-2);
+		};
+	</script>
+</head>
+<body>
+	<select id='pref' onchange="gen();"> 
+		<option value='ЩЭАГЬ'>ЩЭАГЬ</option>
+		<option value='ЩЭРХБ'>ЩЭРХБ</option>
+		<option value='ЩЭСИД'>ЩЭСИД</option>
+		<option value='ЩЭСМЮ'>ЩЭСМЮ</option>
+		<option value='ЩЭРХА'>ЩЭРХА</option>
+		<option value='ЩЭСНГ'>ЩЭСНГ</option>
+		<option value='ЩЭРХВ'>ЩЭРХВ</option>
+		<option value='ШЭСГЯ'>ШЭСГЯ</option>
+	</select>
+	<div> <textarea id='inp' rows='15' cols="80" placeholder="Введите блоки" onchange="gen();" oninput="gen();"></textarea> </div>
+	<div> <textarea id='out' rows='15' cols="80" readonly onclick="this.select();"></textarea> </div>
+</body>
+</html>
