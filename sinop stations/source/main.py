@@ -38,7 +38,7 @@ class MainWindow(QMainWindow):
         self.table = QTableWidget()
         self.layout.addWidget(self.table)
 
-        # get stations list
+        # horizontal header labels
         stations = dict()
         for row in get_json('stations.json'):
             index, name = row['sindex'], row['station_name']
