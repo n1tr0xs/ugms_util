@@ -1,5 +1,6 @@
 import sys
 import requests
+import datetime as dt
 from collections.abc import Iterable
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -46,7 +47,7 @@ class MainWindow(QMainWindow):
                 stations[index] = name
         
         names = [
-            f'{name}, {index}'
+            f'{name}'
             for index, name in sorted(
                 stations.items(),
                 key=lambda x: x[0]
@@ -60,12 +61,42 @@ class MainWindow(QMainWindow):
         for station in stations:
             for row in get_json('station_taking.json', {'station': station}):
                 bufr_name[row['code']] = row['caption']
+        vhl = [
+            f'{name}'
+            for code, name in sorted(
+                bufr_name.items(),
+                key=lambda x: x[0]
+            )
+        ]
         self.table.setRowCount(len(bufr_name))
-        self.table.setVerticalHeaderLabels(f'{name}, {code}' for code, name in sorted(bufr_name.items(), key=lambda x: x[0]))
+        self.table.setVerticalHeaderLabels(vhl)
 
-        
-        
-        
+        # measurements values
+        time_step = dt.timedelta(hours=3)
+        now = dt.datetime.utcnow()
+        today = dt.datetime.utcnow().date()
+        point = dt.datetime(today.year, today.month, today.day, 0, 0, 0)
+        point += ((now-point) // time_step * time_step)
+
+        meas_for_table = dict()
+        for station in stations:
+            resp = get_json('get', {'station': station, 'streams': 0, 'point_at': point.timestamp()})
+            for r in resp:
+                bufr = r['code']
+                station = r['station']
+                value = r['value']
+                unit = r['unit']
+                if meas_for_table.get(bufr, None) is None:
+                    meas_for_table[bufr] = dict()
+                meas_for_table[bufr][station] = f'{value} {unit}'
+
+        for i, bufr in enumerate(sorted(bufr_name)):
+            for j, station in enumerate(sorted(stations)):
+                try:
+                    self.table.setItem(i, j, QTableWidgetItem(meas_for_table[bufr][station]))
+                except KeyError:
+                    self.table.setItem(i, j, QTableWidgetItem('-'*3))
+                
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
         
