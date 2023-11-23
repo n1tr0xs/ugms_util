@@ -33,30 +33,40 @@ class MainWindow(QMainWindow):
         self.setFont(QtGui.QFont('Times New Roman', 12))
         self.setWindowTitle('')
 
-        self.label = QLabel('Срок:')
-        self.layout.addWidget(self.label, 0, 0)
+        self.label_term = QLabel('Срок:')
+        self.layout.addWidget(self.label_term, 0, 0)
 
-        self.buttonUpdate = QPushButton('Обновить данные')
-        self.buttonUpdate.clicked.connect(self.update_data)
-        self.layout.addWidget(self.buttonUpdate, 0, 1)
+        self.label_last_update = QLabel('Последнее обновление:')
+        self.layout.addWidget(self.label_last_update, 0, 1)
 
         self.table = QTableWidget()
         self.layout.addWidget(self.table, 1, 0, 1, 2)
+
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(10*1000)
+        self.timer.timeout.connect(self.update_data)
+        self.timer.start()
 
         self.update_data()
         self.restore_settings()
         self.show()
 
     def update_data(self):
-        self.buttonUpdate.setText('Подождите...')
-        self.buttonUpdate.setEnabled(False)
+        # get time and calculate last term
+        time_step = dt.timedelta(hours=3)
+        now = dt.datetime.utcnow()
+        today = dt.datetime.utcnow().date()
+        point = dt.datetime(today.year, today.month, today.day, 0, 0, 0)
+        point += ((now-point) // time_step * time_step)
+        
+        self.label_term.setText(f'Срок: {point} UTC')
+        self.label_last_update.setText(f'Обновление, подождите...')
         # horizontal header labels
         stations = dict()
         for row in get_json('stations.json'):
             index, name = row['sindex'], row['station_name']
             if name.startswith('МС'):
                 stations[index] = name
-        
         names = [
             f'{name}'
             for index, name in sorted(
@@ -64,7 +74,6 @@ class MainWindow(QMainWindow):
                 key=lambda x: x[0]
             )
         ]
-            
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
 
@@ -83,13 +92,7 @@ class MainWindow(QMainWindow):
         self.table.setRowCount(len(bufr_name))
         self.table.setVerticalHeaderLabels(vhl)
 
-        # measurements values
-        time_step = dt.timedelta(hours=3)
-        now = dt.datetime.utcnow()
-        today = dt.datetime.utcnow().date()
-        point = dt.datetime(today.year, today.month, today.day, 0, 0, 0)
-        point += ((now-point) // time_step * time_step)
-        self.label.setText(f'Срок: {point} UTC. Последнее обновление: {dt.datetime.now()}')
+        # measurements values        
         meas_for_table = dict()
         for station in stations:
             resp = get_json('get', {'station': station, 'streams': 0, 'point_at': point.timestamp()})
@@ -109,13 +112,11 @@ class MainWindow(QMainWindow):
                     self.table.setItem(i, j, QTableWidgetItem(meas_for_table[bufr][station]))
                 except KeyError:
                     self.table.setItem(i, j, QTableWidgetItem('-'*3))
-
+    
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
-        self.buttonUpdate.setText('Обновить данные')
-        self.buttonUpdate.setEnabled(True)
+        self.label_last_update.setText(f'Последнее обновление: {dt.datetime.now()}')
         
-    
     def closeEvent(self, event:QtGui.QCloseEvent):
         self.save_settings()
         super().closeEvent(event)
