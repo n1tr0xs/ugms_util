@@ -55,9 +55,6 @@ class MainWindow(QMainWindow):
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
 
-        measurements = dict()
-        resp = get_json('get', {'stations': stations.keys(), 'streams': 0})
-
         # vertical header labels
         bufr_name = dict()
         for station in stations:
