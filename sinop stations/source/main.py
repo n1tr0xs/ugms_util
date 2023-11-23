@@ -10,10 +10,7 @@ from PyQt6.QtWidgets import *
 def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640') -> dict:
     url = f'{server}/{page}?'
     for k, v in parameters.items():
-        url += f'{k}='
-        url += ','.join(map(str, v)) if isinstance(v, Iterable) else str(v)
-        url += '&'
-##    print(url)
+        url += f'{k}=' + ','.join(map(str, v)) if isinstance(v, Iterable) else str(v) + '&'
     return requests.get(url).json()
 
 class MainWindow(QMainWindow):
@@ -42,17 +39,17 @@ class MainWindow(QMainWindow):
         self.buttonUpdate = QPushButton('Обновить данные')
         self.buttonUpdate.clicked.connect(self.update_data)
         self.layout.addWidget(self.buttonUpdate, 0, 1)
-        
-        
+
         self.table = QTableWidget()
         self.layout.addWidget(self.table, 1, 0, 1, 2)
 
         self.update_data()
         self.restore_settings()
         self.show()
-##        self.setFixedSize(self.sizeHint())
 
     def update_data(self):
+        self.buttonUpdate.setText('Подождите...')
+        self.buttonUpdate.setEnabled(False)
         # horizontal header labels
         stations = dict()
         for row in get_json('stations.json'):
@@ -67,6 +64,7 @@ class MainWindow(QMainWindow):
                 key=lambda x: x[0]
             )
         ]
+            
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
 
@@ -91,8 +89,7 @@ class MainWindow(QMainWindow):
         today = dt.datetime.utcnow().date()
         point = dt.datetime(today.year, today.month, today.day, 0, 0, 0)
         point += ((now-point) // time_step * time_step)
-        print('asd')
-        self.label.setText(f'Срок: {point} UTC')
+        self.label.setText(f'Срок: {point} UTC. Последнее обновление: {dt.datetime.now()}')
         meas_for_table = dict()
         for station in stations:
             resp = get_json('get', {'station': station, 'streams': 0, 'point_at': point.timestamp()})
@@ -105,6 +102,7 @@ class MainWindow(QMainWindow):
                     meas_for_table[bufr] = dict()
                 meas_for_table[bufr][station] = f'{value} {unit}'
 
+        # update data in QTableWidget
         for i, bufr in enumerate(sorted(bufr_name)):
             for j, station in enumerate(sorted(stations)):
                 try:
@@ -114,6 +112,9 @@ class MainWindow(QMainWindow):
 
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
+        self.buttonUpdate.setText('Обновить данные')
+        self.buttonUpdate.setEnabled(True)
+        
     
     def closeEvent(self, event:QtGui.QCloseEvent):
         self.save_settings()
