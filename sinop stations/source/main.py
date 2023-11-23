@@ -36,9 +36,23 @@ class MainWindow(QMainWindow):
         self.setFont(QtGui.QFont('Times New Roman', 12))
         self.setWindowTitle('')
 
-        self.table = QTableWidget()
-        self.layout.addWidget(self.table)
+        self.label = QLabel('Срок:')
+        self.layout.addWidget(self.label, 0, 0)
 
+        self.buttonUpdate = QPushButton('Обновить данные')
+        self.buttonUpdate.clicked.connect(self.update_data)
+        self.layout.addWidget(self.buttonUpdate, 0, 1)
+        
+        
+        self.table = QTableWidget()
+        self.layout.addWidget(self.table, 1, 0, 1, 2)
+
+        self.update_data()
+        self.restore_settings()
+        self.show()
+##        self.setFixedSize(self.sizeHint())
+
+    def update_data(self):
         # horizontal header labels
         stations = dict()
         for row in get_json('stations.json'):
@@ -77,7 +91,8 @@ class MainWindow(QMainWindow):
         today = dt.datetime.utcnow().date()
         point = dt.datetime(today.year, today.month, today.day, 0, 0, 0)
         point += ((now-point) // time_step * time_step)
-
+        print('asd')
+        self.label.setText(f'Срок: {point} UTC')
         meas_for_table = dict()
         for station in stations:
             resp = get_json('get', {'station': station, 'streams': 0, 'point_at': point.timestamp()})
@@ -96,15 +111,10 @@ class MainWindow(QMainWindow):
                     self.table.setItem(i, j, QTableWidgetItem(meas_for_table[bufr][station]))
                 except KeyError:
                     self.table.setItem(i, j, QTableWidgetItem('-'*3))
-                
+
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
-        
-        self.restore_settings()
-        self.show()
-##        self.setFixedSize(self.sizeHint())
-
-
+    
     def closeEvent(self, event:QtGui.QCloseEvent):
         self.save_settings()
         super().closeEvent(event)
