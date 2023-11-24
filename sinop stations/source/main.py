@@ -10,8 +10,71 @@ from PyQt6.QtWidgets import *
 def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640') -> dict:
     url = f'{server}/{page}?'
     for k, v in parameters.items():
-        url += f'{k}=' + ','.join(map(str, v)) if isinstance(v, Iterable) else str(v) + '&'
+        url += f'{k}='
+        url += ','.join(map(str, v)) if isinstance(v, Iterable) else str(v)
+        url += '&'
+    print(url)
     return requests.get(url).json()
+
+class WorkerSignals(QObject):
+    '''
+    Defines the signals available from a running worker thread.
+    Supported signals are:
+
+    finished
+        No data
+    error
+        tuple (exctype, value, traceback.format_exc() )
+    result
+        object data returned from processing
+    progress
+        ImageQt to draw
+    '''
+    finished = pyqtSignal()
+    error = pyqtSignal(tuple)
+    result = pyqtSignal()
+    progress = pyqtSignal()
+
+
+class Worker(QRunnable):
+    '''
+    Worker thread
+
+    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
+
+    :param callback: The function callback to run on this worker thread. Supplied args and
+                     kwargs will be passed through to the runner.
+    :type callback: function
+    :param args: Arguments to pass to the callback function
+    :param kwargs: Keywords to pass to the callback function
+    '''
+    def __init__(self, fn, *args, **kwargs):
+        super(Worker, self).__init__()
+        # Store constructor arguments (re-used for processing)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+        
+        # Add the callback to our kwargs
+        self.kwargs['progress_callback'] = self.signals.progress
+
+    @pyqtSlot()
+    def run(self):
+        '''
+        Initialise the runner function with passed args, kwargs.
+        '''
+        # Retrieve args/kwargs here; and fire processing using them
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+        except:
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            self.signals.result.emit()  # Return the result of the processing
+        finally:
+            self.signals.finished.emit()  # Done
 
 class MainWindow(QMainWindow):
     keyPressed = QtCore.pyqtSignal(int)
@@ -23,6 +86,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         
         self.settings = QtCore.QSettings('n1tr0xs', 'sinop measurement view')
+        self.threadpool = QThreadPool.globalInstance()
                         
         self.layout = QGridLayout()
 
@@ -44,14 +108,20 @@ class MainWindow(QMainWindow):
 
         self.timer = QtCore.QTimer()
         self.timer.setInterval(10*1000)
-        self.timer.timeout.connect(self.update_data)
+        self.timer.timeout.connect(self.start_update)
         self.timer.start()
-
-        self.update_data()
+        self.start_update()
+        
         self.restore_settings()
         self.show()
 
-    def update_data(self):
+    def start_update(self):
+        '''
+        '''
+        worker = Worker(self.update_data)
+        self.threadpool.start(worker)
+    
+    def update_data(self, *args, **kw):
         # get time and calculate last term
         time_step = dt.timedelta(hours=3)
         now = dt.datetime.utcnow()
