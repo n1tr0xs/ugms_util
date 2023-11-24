@@ -136,22 +136,12 @@ class MainWindow(QMainWindow):
     def get_stations(self):
         '''
         Gets station list.
-        Sets vertical header labels.
         '''
         self.stations = dict()
         for row in get_json('stations.json'):
             index, name = row['sindex'], row['station_name']
             if name.startswith('МС'):
                 self.stations[index] = name
-        names = [
-            f'{name}'
-            for index, name in sorted(
-                self.stations.items(),
-                key=lambda x: x[0]
-            )
-        ]
-        self.table.setColumnCount(len(names))
-        self.table.setHorizontalHeaderLabels(names)
         
     def get_terms(self):
         '''
@@ -165,23 +155,26 @@ class MainWindow(QMainWindow):
 
     def get_measurements_types(self):
         '''
-        Gets types of measurements.
-        Sets vertical header labels.
+        Gets types of measurements.        
         '''
         self.bufr_name = dict()
         for station in self.stations:
             for row in get_json('station_taking.json', {'station': station}):
                 self.bufr_name[row['code']] = row['caption']
-        vhl = [
-            f'{name}'
-            for code, name in sorted(
-                self.bufr_name.items(),
-                key=lambda x: x[0]
-            )
-        ]
-        self.table.setRowCount(len(self.bufr_name))
-        self.table.setVerticalHeaderLabels(vhl)
 
+    def set_headers(self):
+        '''
+        Sets horizontal header labels.
+        Sets vertical header labels.
+        '''
+        names = [f'{name}' for _, name in sorted(self.stations.items(), key=lambda x: x[0])]
+        self.table.setColumnCount(len(names))
+        self.table.setHorizontalHeaderLabels(names)
+
+        names = [f'{name}' for _, name in sorted(self.bufr_name.items(), key=lambda x: x[0])]
+        self.table.setRowCount(len(names))
+        self.table.setVerticalHeaderLabels(names)
+        
     def get_measurements(self):
         '''
         Gets measurements.
