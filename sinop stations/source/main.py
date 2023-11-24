@@ -87,6 +87,10 @@ class MainWindow(QMainWindow):
         self.centralWidget.setLayout(self.layout)
         self.setCentralWidget(self.centralWidget)
 
+        self.timer = QtCore.QTimer()
+        self.timer.setInterval(10*1000)
+        self.timer.timeout.connect(self.create_worker)
+
         self.setFont(QtGui.QFont('Times New Roman', 12))
         self.setWindowTitle('Просмотр данных метеорологических станций ЛНР')
 
@@ -103,16 +107,12 @@ class MainWindow(QMainWindow):
         
         self.table = QTableWidget()
         self.layout.addWidget(self.table, 1, 0, 1, 3)
-
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(10*1000)
-        self.timer.timeout.connect(self.create_worker)
-        self.timer.start()
-
+        
         self.get_stations()
-        self.get_terms()
         self.get_measurements_types()
-        self.create_worker()
+        self.term_box.currentIndexChanged.connect(self.timer.timeout.emit)
+        self.get_terms()
+        self.timer.start()
         
         self.restore_settings()
         self.show()
