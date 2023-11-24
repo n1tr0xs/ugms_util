@@ -107,11 +107,16 @@ class MainWindow(QMainWindow):
 
     def start_update(self):
         '''
+        Creates and starts worker for info update.
         '''
         worker = Worker(self.update_data)
         self.threadpool.start(worker)
     
     def update_data(self, *args, **kw):
+        '''
+        Gets info using REST API from server.
+        Updates info in `self.table`.
+        '''
         # get time and calculate last term
         time_step = dt.timedelta(hours=3)
         now = dt.datetime.utcnow()
