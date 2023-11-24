@@ -144,6 +144,10 @@ class MainWindow(QMainWindow):
         self.table.setHorizontalHeaderLabels(names)
         
     def get_terms(self):
+        '''
+        Gets available terms.
+        Adds them into the `self.term_box`.
+        '''
         resp = get_json('get', {'streams': 0, 'stations': self.stations.keys()})
         self.terms = sorted(filter(bool, set(row['point_at'] for row in resp)), reverse=True)
         for term in self.terms:
@@ -167,7 +171,37 @@ class MainWindow(QMainWindow):
         ]
         self.table.setRowCount(len(self.bufr_name))
         self.table.setVerticalHeaderLabels(vhl)
-    
+
+    def get_measurements(self):
+        '''
+        Gets measurements.
+        '''
+        self.meas_for_table = dict()
+        for station in self.stations:
+            resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': point})
+            for r in resp:
+                bufr = r['code']
+                station = r['station']
+                value = r['value']
+                unit = r['unit']
+                if self.meas_for_table.get(bufr, None) is None:
+                    self.meas_for_table[bufr] = dict()
+                self.meas_for_table[bufr][station] = f'{value} {unit}'
+                
+    def update_table_data(self):
+        '''
+        Updates values of `self.table` items.
+        '''
+        for i, bufr in enumerate(sorted(self.bufr_name)):
+            for j, station in enumerate(sorted(self.stations)):
+                try:
+                    item = QTableWidgetItem(self.meas_for_table[bufr][station])
+                except KeyError:
+                    item = QTableWidgetItem('-'*3)
+                finally:
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.table.setItem(i, j, item)
+                    
     def update_data(self, *args, **kw):
         '''
         Gets info using REST API from server.
@@ -176,30 +210,9 @@ class MainWindow(QMainWindow):
         self.label_last_update.setText(f'Обновление, подождите...')
 
         point = self.terms[self.term_box.currentIndex()]
-        
-        # measurements values        
-        meas_for_table = dict()
-        for station in self.stations:
-            resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': point})
-            for r in resp:
-                bufr = r['code']
-                station = r['station']
-                value = r['value']
-                unit = r['unit']
-                if meas_for_table.get(bufr, None) is None:
-                    meas_for_table[bufr] = dict()
-                meas_for_table[bufr][station] = f'{value} {unit}'
-                
-        # update data in QTableWidget
-        for i, bufr in enumerate(sorted(self.bufr_name)):
-            for j, station in enumerate(sorted(self.stations)):
-                try:
-                    item = QTableWidgetItem(meas_for_table[bufr][station])
-                except KeyError:
-                    item = QTableWidgetItem('-'*3)
-                finally:
-                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                    self.table.setItem(i, j, item)
+
+        get_measurements()
+        update_table_data()
         
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
