@@ -8,6 +8,10 @@ from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSign
 from PyQt6.QtWidgets import *
 
 def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640') -> list:
+    '''
+    Gets json from `server` using given `page` with given `parameters`.
+    Returns list.
+    '''
     url = f'{server}/{page}?'
     for k, v in parameters.items():
         url += f'{k}='
@@ -219,6 +223,11 @@ class MainWindow(QMainWindow):
         self.label_last_update.setText(f'Последнее обновление: {dt.datetime.now()}')
         
     def closeEvent(self, event:QtGui.QCloseEvent):
+        '''
+        Overrides closeEvent.
+        Saves window settings (geomtry, position).
+        Stops the `self.timer`.
+        '''
         self.save_settings()
         self.timer.stop()
         super().closeEvent(event)
