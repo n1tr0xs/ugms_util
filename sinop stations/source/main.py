@@ -112,6 +112,7 @@ class MainWindow(QMainWindow):
         
         self.get_stations()
         self.get_measurements_types()
+        self.set_headers()
         self.term_box.currentIndexChanged.connect(self.timer.timeout.emit)
         self.get_terms()
         self.timer.start()
