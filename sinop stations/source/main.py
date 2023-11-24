@@ -13,7 +13,6 @@ def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640
         url += f'{k}='
         url += ','.join(map(str, v)) if isinstance(v, Iterable) else str(v)
         url += '&'
-    print(url)
     return requests.get(url).json()
 
 class WorkerSignals(QObject):
