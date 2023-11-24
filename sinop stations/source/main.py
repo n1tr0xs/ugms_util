@@ -12,6 +12,13 @@ def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640
     '''
     Gets json from `server` using given `page` with given `parameters`.
     Returns list.
+
+    :param page: The rest api page on server.
+    :type page: string
+    :param parameters: GET parameters for rest api page.
+    :type parameters: dictionary
+    :param server: Server base url.
+    :type server: string
     '''
     url = f'{server}/{page}?'
     for k, v in parameters.items():
