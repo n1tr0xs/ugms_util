@@ -169,9 +169,12 @@ class MainWindow(QMainWindow):
         for i, bufr in enumerate(sorted(bufr_name)):
             for j, station in enumerate(sorted(stations)):
                 try:
-                    self.table.setItem(i, j, QTableWidgetItem(meas_for_table[bufr][station]))
+                    item = QTableWidgetItem(meas_for_table[bufr][station])
                 except KeyError:
-                    self.table.setItem(i, j, QTableWidgetItem('-'*3))
+                    item = QTableWidgetItem('-'*3)
+                finally:
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                    self.table.setItem(i, j, item)
     
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
@@ -179,6 +182,7 @@ class MainWindow(QMainWindow):
         
     def closeEvent(self, event:QtGui.QCloseEvent):
         self.save_settings()
+        self.timer.stop()
         super().closeEvent(event)
         
     def save_settings(self):
