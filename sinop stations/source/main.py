@@ -88,17 +88,19 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.centralWidget)
 
         self.setFont(QtGui.QFont('Times New Roman', 12))
-        self.setWindowTitle('')
+        self.setWindowTitle('Просмотр данных метеорологических станций ЛНР')
 
         self.label_term = QLabel('Срок:')
+        self.label_term.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.layout.addWidget(self.label_term, 0, 0)
 
         self.term_box = QComboBox()
         self.layout.addWidget(self.term_box, 0, 1)
 
         self.label_last_update = QLabel('Последнее обновление:')
+        self.label_last_update.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.layout.addWidget(self.label_last_update, 0, 2)
-    
+        
         self.table = QTableWidget()
         self.layout.addWidget(self.table, 1, 0, 1, 3)
 
