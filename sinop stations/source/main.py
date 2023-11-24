@@ -2,6 +2,7 @@ import sys
 import requests
 import datetime as dt
 from collections.abc import Iterable
+import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
@@ -106,6 +107,7 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.label_last_update, 0, 2)
         
         self.table = QTableWidget()
+        self.table.cellDoubleClicked.connect(lambda i, j: pyperclip.copy(self.table.item(i, j).text()))
         self.layout.addWidget(self.table, 1, 0, 1, 3)
         
         self.get_stations()
@@ -115,8 +117,8 @@ class MainWindow(QMainWindow):
         self.timer.start()
         
         self.restore_settings()
-        self.show()
-
+        self.show()        
+        
     def create_worker(self):
         '''
         Creates and starts worker for info update.
