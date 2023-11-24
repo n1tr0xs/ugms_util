@@ -120,8 +120,15 @@ class MainWindow(QMainWindow):
         Creates and starts worker for info update.
         '''
         worker = Worker(self.update_data)
+        worker.signals.finished.connect(self.on_data_update)
         self.threadpool.start(worker)
-
+        
+    def on_data_update(self):
+        '''
+        Changes `self.label_last_update` text after data in table updated.
+        '''
+        self.label_last_update.setText(f'Последнее обновление: {dt.datetime.now()}')
+        
     def get_stations(self):
         '''
         Gets station list.
@@ -187,7 +194,7 @@ class MainWindow(QMainWindow):
                     self.meas_for_table[bufr] = dict()
                 self.meas_for_table[bufr][station] = f'{value} {unit}'
                 
-    def update_table_data(self):
+    def update_table_values(self):
         '''
         Updates values of `self.table` items.
         '''
@@ -200,7 +207,6 @@ class MainWindow(QMainWindow):
                 finally:
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                     self.table.setItem(i, j, item)
-
                     
     def update_data(self):
         '''
@@ -211,10 +217,9 @@ class MainWindow(QMainWindow):
 
         self.point = self.terms[self.term_box.currentIndex()]        
         self.get_measurements()
-        self.update_table_data()
+        self.update_table_values()
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
-        self.label_last_update.setText(f'Последнее обновление: {dt.datetime.now()}')
         
     def closeEvent(self, event:QtGui.QCloseEvent):
         '''
