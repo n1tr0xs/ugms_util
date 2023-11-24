@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
             if name.startswith('МС'):
                 self.stations[index] = name
         names = [
-            f'{name} [{index}]'
+            f'{name}'
             for index, name in sorted(
                 self.stations.items(),
                 key=lambda x: x[0]
