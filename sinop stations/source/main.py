@@ -31,8 +31,6 @@ class WorkerSignals(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(tuple)
     result = pyqtSignal()
-    progress = pyqtSignal()
-
 
 class Worker(QRunnable):
     '''
@@ -53,9 +51,6 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
-        
-        # Add the callback to our kwargs
-        self.kwargs['progress_callback'] = self.signals.progress
 
     @pyqtSlot()
     def run(self):
@@ -181,8 +176,8 @@ class MainWindow(QMainWindow):
         Gets measurements.
         '''
         self.meas_for_table = dict()
-        for station in self.stations:
-            resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': point})
+        for station in self.stations:            
+            resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point})            
             for r in resp:
                 bufr = r['code']
                 station = r['station']
@@ -205,19 +200,18 @@ class MainWindow(QMainWindow):
                 finally:
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                     self.table.setItem(i, j, item)
+
                     
-    def update_data(self, *args, **kw):
+    def update_data(self):
         '''
         Gets info using REST API from server.
         Updates info in `self.table`.
         '''
         self.label_last_update.setText(f'Обновление, подождите...')
 
-        point = self.terms[self.term_box.currentIndex()]
-
-        get_measurements()
-        update_table_data()
-        
+        self.point = self.terms[self.term_box.currentIndex()]        
+        self.get_measurements()
+        self.update_table_data()
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
         self.label_last_update.setText(f'Последнее обновление: {dt.datetime.now()}')
