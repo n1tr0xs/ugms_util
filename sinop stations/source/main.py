@@ -105,18 +105,18 @@ class MainWindow(QMainWindow):
 
         self.timer = QtCore.QTimer()
         self.timer.setInterval(10*1000)
-        self.timer.timeout.connect(self.start_update)
+        self.timer.timeout.connect(self.create_worker)
         self.timer.start()
 
         self.get_stations()
         self.get_terms()
         self.get_measurements_types()
-        self.start_update()
+        self.create_worker()
         
         self.restore_settings()
         self.show()
 
-    def start_update(self):
+    def create_worker(self):
         '''
         Creates and starts worker for info update.
         '''
