@@ -1,14 +1,27 @@
 import sys
 import requests
 import datetime as dt
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from numbers import Number
 import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
 from PyQt6.QtWidgets import *
 
-def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640') -> list:
+convert_table = {
+    'k': {
+      'C': lambda val: val - 273.15,
+      'F': lambda val: 1.8*val - 459.67,
+      'Ra': lambda val: 1.8*val
+    },
+}
+
+wanted_unit = {
+    'k': 'C',
+}
+
+def get_json(page: str, parameters: Mapping={}, *, server: str='http://10.55.1.30:8640') -> list:
     '''
     Gets json from `server` using given `page` with given `parameters`.
     Returns list.
@@ -29,7 +42,16 @@ def get_json(page: str, parameters: dict={}, server: str='http://10.55.1.30:8640
         return requests.get(url).json()
     except requests.exceptions.JSONDecodeError:
         return list()
-        
+
+def format_unit(value: Number, base: str, target: str, table: dict=convert_table) -> str:
+    '''
+    Converts given value from unit to unit.
+    Formats the result to string `value unit`.
+    '''
+    try:
+        return f'{table[base][target](value)} {target}'
+    except KeyError:
+        return f'{value} {base}'
 
 class WorkerSignals(QObject):
     '''
@@ -197,7 +219,14 @@ class MainWindow(QMainWindow):
                 unit = r['unit']
                 if self.meas_for_table.get(bufr, None) is None:
                     self.meas_for_table[bufr] = dict()
-                self.meas_for_table[bufr][station] = f'{value} {unit}'
+                
+                for t in (int, float):
+                    try: value = t(value)
+                    except ValueError: pass
+                    else: break
+                    
+                text = format_unit(value, unit, wanted_unit.get(unit, unit))
+                self.meas_for_table[bufr][station] = text
                 
     def update_table_values(self):
         '''
