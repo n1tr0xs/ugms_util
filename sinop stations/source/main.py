@@ -39,6 +39,7 @@ def get_json(page: str, parameters: Mapping={}, *, server: str='http://10.55.1.3
         url += f'{k}='
         url += ','.join(map(str, v)) if isinstance(v, Iterable) else str(v)
         url += '&'
+    print(url)
     try:
         return requests.get(url).json()
     except requests.exceptions.JSONDecodeError:
@@ -177,8 +178,15 @@ class MainWindow(QMainWindow):
         Gets available terms.
         Adds them into the `self.term_box`.
         '''
-        resp = get_json('get', {'streams': 0, 'stations': self.stations.keys()})
-        self.terms = sorted(filter(bool, set(row['point_at'] for row in resp)), reverse=True)
+        print('getting terms')
+        self.terms = set()
+        last_id = 0
+        while (resp := get_json('get', {'streams': 0, 'stations': self.stations.keys(), 'lastid': last_id})):
+            for row in resp:
+                moment = row['point_at']
+                last_id = row['id']
+                self.terms.add(moment)            
+        self.terms = sorted(filter(bool, self.terms), reverse=True)
         for term in self.terms:
             self.term_box.addItem(f'{dt.datetime.utcfromtimestamp(term)} UTC')
 
@@ -186,6 +194,7 @@ class MainWindow(QMainWindow):
         '''
         Gets types of measurements.        
         '''
+        print('getting measurements types')
         self.bufr_name = dict()
         for station in self.stations:
             for row in get_json('station_taking.json', {'station': station}):
@@ -196,10 +205,11 @@ class MainWindow(QMainWindow):
         Sets horizontal header labels.
         Sets vertical header labels.
         '''
+        print('setting headers')
         names = [f'{name}' for _, name in sorted(self.stations.items(), key=lambda x: x[0])]
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
-
+        
         names = [f'{name}' for _, name in sorted(self.bufr_name.items(), key=lambda x: x[0])]
         self.table.setRowCount(len(names))
         self.table.setVerticalHeaderLabels(names)
@@ -208,8 +218,9 @@ class MainWindow(QMainWindow):
         '''
         Gets measurements.
         '''
+        print('getting measurements')
         self.meas_for_table = dict()
-        for station in self.stations:            
+        for station in self.stations:
             resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point})            
             for r in resp:
                 bufr = r['code']
@@ -227,6 +238,7 @@ class MainWindow(QMainWindow):
         '''
         Updates values of `self.table` items.
         '''
+        print('updating table values')
         for i, bufr in enumerate(sorted(self.bufr_name)):
             for j, station in enumerate(sorted(self.stations)):
                 try:
@@ -242,8 +254,8 @@ class MainWindow(QMainWindow):
         Gets info using REST API from server.
         Updates info in `self.table`.
         '''
+        print('updating data')
         self.label_last_update.setText(f'Обновление, подождите...')
-
         self.point = self.terms[self.term_box.currentIndex()]        
         self.get_measurements()
         self.update_table_values()
