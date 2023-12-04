@@ -1,6 +1,7 @@
 import sys
 import requests
 import datetime as dt
+import locale
 from collections.abc import Iterable, Mapping
 from numbers import Number
 from decimal import Decimal
@@ -22,6 +23,7 @@ wanted_unit = {
     'k': 'C',
 }
 
+locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
 def get_json(page: str, parameters: Mapping={}, *, server: str='http://10.55.1.30:8640') -> list:
     '''
     Gets json from `server` using given `page` with given `parameters`.
@@ -188,7 +190,8 @@ class MainWindow(QMainWindow):
                 self.terms.add(moment)            
         self.terms = sorted(filter(bool, self.terms), reverse=True)
         for term in self.terms:
-            self.term_box.addItem(f'{dt.datetime.utcfromtimestamp(term)} UTC')
+            str_term = dt.datetime.utcfromtimestamp(term).strftime('%c')
+            self.term_box.addItem(f'{str_term} UTC')
 
     def get_measurements_types(self):
         '''
