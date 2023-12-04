@@ -3,6 +3,7 @@ import requests
 import datetime as dt
 from collections.abc import Iterable, Mapping
 from numbers import Number
+from decimal import Decimal
 import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -11,9 +12,9 @@ from PyQt6.QtWidgets import *
 
 convert_table = {
     'k': {
-      'C': lambda val: val - 273.15,
-      'F': lambda val: 1.8*val - 459.67,
-      'Ra': lambda val: 1.8*val
+      'C': lambda val: val - Decimal('273.15'),
+      'F': lambda val: Decimal('1.8')*val - Decimal('459.67'),
+      'Ra': lambda val: Decimal('1.8')*val
     },
 }
 
@@ -76,7 +77,6 @@ class Worker(QRunnable):
     '''
     def __init__(self, fn, *args, **kwargs):
         super(Worker, self).__init__()
-        # Store constructor arguments (re-used for processing)
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
@@ -87,7 +87,6 @@ class Worker(QRunnable):
         '''
         Initialise the runner function with passed args, kwargs.
         '''
-        # Retrieve args/kwargs here; and fire processing using them
         try:
             result = self.fn(*self.args, **self.kwargs)
         except:
@@ -95,9 +94,9 @@ class Worker(QRunnable):
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            self.signals.result.emit()  # Return the result of the processing
+            self.signals.result.emit()
         finally:
-            self.signals.finished.emit()  # Done
+            self.signals.finished.emit()
 
 class MainWindow(QMainWindow):
     keyPressed = QtCore.pyqtSignal(int)
@@ -220,11 +219,7 @@ class MainWindow(QMainWindow):
                 if self.meas_for_table.get(bufr, None) is None:
                     self.meas_for_table[bufr] = dict()
                 
-                for t in (int, float):
-                    try: value = t(value)
-                    except ValueError: pass
-                    else: break
-                    
+                value = Decimal(value)                    
                 text = format_unit(value, unit, wanted_unit.get(unit, unit))
                 self.meas_for_table[bufr][station] = text
                 
