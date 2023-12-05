@@ -17,10 +17,34 @@ convert_table = {
       'F': lambda val: Decimal('1.8')*val - Decimal('459.67'),
       'Ra': lambda val: Decimal('1.8')*val
     },
+    'pa': {
+        'гПа': lambda val: val / 100,
+    },
+    'code table': {
+        '': lambda x: x,
+    },
+    'degree true': {
+        '°': lambda x: x,
+    },
+    'kg m-2': {
+        'мм': lambda x: x,
+    },
+    'm': {
+        'м': lambda x: x,
+    },
+    'm/s': {
+        'м/с': lambda x: x,
+    }
 }
 
 wanted_unit = {
     'k': 'C',
+    'pa': 'гПа',
+    'code table': '',
+    'degree true': '°',
+    'kg m-2': 'мм',
+    'm': 'м',
+    'm/s': 'м/с',
 }
 
 locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
