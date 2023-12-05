@@ -4,7 +4,7 @@ import datetime as dt
 import locale
 from collections.abc import Iterable, Mapping
 from numbers import Number
-from decimal import Decimal
+from decimal import Decimal, ConversionSyntax, InvalidOperation
 import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -200,7 +200,8 @@ class MainWindow(QMainWindow):
         print('getting measurements types')
         self.bufr_name = dict()
         for station in self.stations:
-            for row in get_json('station_taking.json', {'station': station}):
+            resp = get_json('station_taking.json', {'station': station})
+            for row in resp:
                 self.bufr_name[row['code']] = row['caption']
 
     def set_headers(self):
@@ -224,6 +225,7 @@ class MainWindow(QMainWindow):
         print('getting measurements')
         self.meas_for_table = dict()
         for station in self.stations:
+            print(station, self.stations[station])
             resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point})            
             for r in resp:
                 bufr = r['code']
@@ -231,9 +233,11 @@ class MainWindow(QMainWindow):
                 value = r['value']
                 unit = r['unit']
                 if self.meas_for_table.get(bufr, None) is None:
-                    self.meas_for_table[bufr] = dict()
-                
-                value = Decimal(value)                    
+                    self.meas_for_table[bufr] = dict()                
+                try:
+                    value = Decimal(value)
+                except (ConversionSyntax, InvalidOperation):
+                    pass
                 text = format_unit(value, unit, wanted_unit.get(unit, unit))
                 self.meas_for_table[bufr][station] = text
                 
