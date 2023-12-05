@@ -4,18 +4,18 @@ import datetime as dt
 import locale
 from collections.abc import Iterable, Mapping
 from numbers import Number
-from decimal import Decimal, ConversionSyntax, InvalidOperation
+from decimal import Decimal, ConversionSyntax, InvalidOperation, Context
 import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
 from PyQt6.QtWidgets import *
 
+tenth_context = Context(prec=1)
+
 convert_table = {
     'k': {
       'C': lambda val: val - Decimal('273.15'),
-      'F': lambda val: Decimal('1.8')*val - Decimal('459.67'),
-      'Ra': lambda val: Decimal('1.8')*val
     },
     'pa': {
         'гПа': lambda val: val / 100,
@@ -48,6 +48,7 @@ wanted_unit = {
 }
 
 locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
+
 def get_json(page: str, parameters: Mapping={}, *, server: str='http://10.55.1.30:8640') -> list:
     '''
     Gets json from `server` using given `page` with given `parameters`.
@@ -80,7 +81,7 @@ def format_unit(value: Number, base: str, target: str, table: dict=convert_table
         return f'{table[base][target](value)} {target}'
     except KeyError:
         return f'{value} {base}'
-
+    
 class WorkerSignals(QObject):
     '''
     Defines the signals available from a running worker thread.
@@ -261,7 +262,8 @@ class MainWindow(QMainWindow):
                 try:
                     value = Decimal(value)
                 except (ConversionSyntax, InvalidOperation):
-                    pass
+                    value = '#'
+
                 text = format_unit(value, unit, wanted_unit.get(unit, unit))
                 self.meas_for_table[bufr][station] = text
                 
