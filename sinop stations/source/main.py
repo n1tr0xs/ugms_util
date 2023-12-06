@@ -263,17 +263,21 @@ class MainWindow(QMainWindow):
         '''
         print('getting measurements...')
         self.meas_for_table = dict()
-        ready = set()
+        ready = dict()
         for station in self.stations:
             print(station, self.stations[station])
-            for r in get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point}):                
+            for r in get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point}):
+                _id = r['id']
                 bufr = r['code']
                 station = r['station']
                 value = r['value']
                 unit = r['unit']
-                if (bufr, station) in ready:
+                
+                #ready[(bufr, station)] = min(_id, ready.get((bufr, station), -1))
+                prev = ready.get((bufr, station), None)
+                if (prev is not None) and (prev < _id):
                     continue
-                ready.add((bufr, station))
+                ready[(bufr, station)] = _id
                 if self.meas_for_table.get(bufr, None) is None:
                     self.meas_for_table[bufr] = dict()
                 try:
