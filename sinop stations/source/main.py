@@ -192,18 +192,20 @@ class MainWindow(QMainWindow):
         '''
         Gets station list.
         '''
+        print('getting stations...')
         self.stations = dict()
         for row in get_json('stations.json'):
             index, name = row['sindex'], row['station_name']
             if name.startswith('МС'):
                 self.stations[index] = name
+        print('stations received.')
         
     def get_terms(self):
         '''
         Gets available terms.
         Adds them into the `self.term_box`.
         '''
-        print('getting terms')
+        print('getting terms...')
         self.terms = set()
         last_id = 0
         while (resp := get_json('get', {'streams': 0, 'stations': self.stations.keys(), 'lastid': last_id})):
@@ -215,13 +217,14 @@ class MainWindow(QMainWindow):
         for term in self.terms:
             str_term = dt.datetime.utcfromtimestamp(term).strftime('%c')
             self.term_box.addItem(f'{str_term} UTC')
+        print('terms received.')
 
     def get_measurements_types(self):
         '''
         Gets types of measurements for wanted stations.
         Gets meas units for each measurement type.
         '''
-        print('getting measurements types')
+        print('getting measurements types...')
         self.bufr_name = dict()
         self.bufr_unit = dict()
         bufrs = set()        
@@ -237,26 +240,28 @@ class MainWindow(QMainWindow):
             unit = wanted_unit.get(row['unit'], row['unit'])
             self.bufr_name[bufr] = name
             self.bufr_unit[bufr] = unit
+        print('measurements types received.')
 
     def set_headers(self):
         '''
         Sets horizontal header labels.
         Sets vertical header labels.
         '''
-        print('setting headers')
+        print('setting headers...')
         names = [f'{name}' for _, name in sorted(self.stations.items(), key=lambda x: x[0])]
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
 
-        names = [f'{bufr} {self.bufr_name[bufr]}, [{self.bufr_unit[bufr]}]' for bufr in sorted(self.bufr_name)]
+        names = [f'{self.bufr_name[bufr]}, [{self.bufr_unit[bufr]}]' for bufr in sorted(self.bufr_name)]
         self.table.setRowCount(len(names))
         self.table.setVerticalHeaderLabels(names)
+        print('headers set.')
         
     def get_measurements(self):
         '''
         Gets measurements.
         '''
-        print('getting measurements')
+        print('getting measurements...')
         self.meas_for_table = dict()
         ready = set()
         for station in self.stations:
@@ -277,12 +282,13 @@ class MainWindow(QMainWindow):
                     value = '#'                
                 text = format_unit(value, unit, wanted_unit.get(unit, unit))
                 self.meas_for_table[bufr][station] = text
+        print('measurements received.')
                 
     def update_table_values(self):
         '''
         Updates values of `self.table` items.
         '''
-        print('updating table values')
+        print('updating table values...')
         for i, bufr in enumerate(sorted(self.bufr_name)):
             for j, station in enumerate(sorted(self.stations)):
                 try:
@@ -292,19 +298,21 @@ class MainWindow(QMainWindow):
                 finally:
                     item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                     self.table.setItem(i, j, item)
+        print('table values updated.')
                     
     def update_data(self):
         '''
         Gets info using REST API from server.
         Updates info in `self.table`.
         '''
-        print('updating data')
+        print('updating data...')
         self.label_last_update.setText(f'Обновление, подождите...')
         self.point = self.terms[self.term_box.currentIndex()]        
         self.get_measurements()
         self.update_table_values()
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
+        print('data updated.')
         
     def closeEvent(self, event:QtGui.QCloseEvent):
         '''
