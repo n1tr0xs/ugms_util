@@ -4,7 +4,7 @@ import datetime as dt
 import locale
 from collections.abc import Iterable, Mapping
 from numbers import Number
-from decimal import Decimal
+from decimal import Decimal, ConversionSyntax, InvalidOperation
 import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
@@ -260,19 +260,17 @@ class MainWindow(QMainWindow):
         self.meas_for_table = dict()
         for station in self.stations:
             print(station, self.stations[station])
-            resp = get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point})            
-            for r in resp:
+            for r in get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point}):
                 bufr = r['code']
                 station = r['station']
                 value = r['value']
                 unit = r['unit']
                 if self.meas_for_table.get(bufr, None) is None:
-                    self.meas_for_table[bufr] = dict()                
+                    self.meas_for_table[bufr] = dict()
                 try:
                     value = Decimal(value)
                 except (ConversionSyntax, InvalidOperation):
-                    value = '#'
-
+                    value = '#'                
                 text = format_unit(value, unit, wanted_unit.get(unit, unit))
                 self.meas_for_table[bufr][station] = text
                 
