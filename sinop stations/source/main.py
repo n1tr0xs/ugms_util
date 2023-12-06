@@ -4,14 +4,12 @@ import datetime as dt
 import locale
 from collections.abc import Iterable, Mapping
 from numbers import Number
-from decimal import Decimal, ConversionSyntax, InvalidOperation, Context
+from decimal import Decimal
 import pyperclip
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot, QThreadPool, QObject, QRunnable, pyqtSignal
 from PyQt6.QtWidgets import *
-
-tenth_context = Context(prec=1)
 
 convert_table = {
     'k': {
