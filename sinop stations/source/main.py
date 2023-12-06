@@ -271,9 +271,7 @@ class MainWindow(QMainWindow):
                 bufr = r['code']
                 station = r['station']
                 value = r['value']
-                unit = r['unit']
-                
-                #ready[(bufr, station)] = min(_id, ready.get((bufr, station), -1))
+                unit = r['unit']                
                 prev = ready.get((bufr, station), None)
                 if (prev is not None) and (prev < _id):
                     continue
