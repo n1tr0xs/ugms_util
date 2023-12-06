@@ -21,7 +21,7 @@ convert_table = {
         'гПа': lambda val: val / 100,
     },
     'code table': {
-        '': lambda x: x,
+        'кодовая таблица': lambda x: x,
     },
     'degree true': {
         '°': lambda x: x,
@@ -40,7 +40,7 @@ convert_table = {
 wanted_unit = {
     'k': 'C',
     'pa': 'гПа',
-    'code table': '',
+    'code table': 'кодовая таблица',
     'degree true': '°',
     'kg m-2': 'мм',
     'm': 'м',
@@ -78,9 +78,9 @@ def format_unit(value: Number, base: str, target: str, table: dict=convert_table
     Formats the result to string `value unit`.
     '''
     try:
-        return f'{table[base][target](value)} {target}'
+        return f'{table[base][target](value)}'
     except KeyError:
-        return f'{value} {base}'
+        return f'{value}'
     
 class WorkerSignals(QObject):
     '''
@@ -220,14 +220,25 @@ class MainWindow(QMainWindow):
 
     def get_measurements_types(self):
         '''
-        Gets types of measurements.        
+        Gets types of measurements for wanted stations.
+        Gets meas units for each measurement type.
         '''
         print('getting measurements types')
         self.bufr_name = dict()
+        self.bufr_unit = dict()
+        bufrs = set()        
         for station in self.stations:
-            resp = get_json('station_taking.json', {'station': station})
-            for row in resp:
-                self.bufr_name[row['code']] = row['caption']
+            for row in get_json('station_taking.json', {'station': station}):
+                bufrs.add(row['code'])
+        
+        for row in get_json('measurement.json'):
+            bufr = row['bufrcode']
+            if bufr not in bufrs:
+                continue
+            name = row['caption']
+            unit = wanted_unit.get(row['unit'], row['unit'])
+            self.bufr_name[bufr] = name
+            self.bufr_unit[bufr] = unit
 
     def set_headers(self):
         '''
@@ -238,8 +249,8 @@ class MainWindow(QMainWindow):
         names = [f'{name}' for _, name in sorted(self.stations.items(), key=lambda x: x[0])]
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
-        
-        names = [f'{name}' for _, name in sorted(self.bufr_name.items(), key=lambda x: x[0])]
+
+        names = [f'{self.bufr_name[bufr]}, [{self.bufr_unit[bufr]}]' for bufr in sorted(self.bufr_name)]
         self.table.setRowCount(len(names))
         self.table.setVerticalHeaderLabels(names)
         
