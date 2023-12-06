@@ -248,7 +248,7 @@ class MainWindow(QMainWindow):
         self.table.setColumnCount(len(names))
         self.table.setHorizontalHeaderLabels(names)
 
-        names = [f'{self.bufr_name[bufr]}, [{self.bufr_unit[bufr]}]' for bufr in sorted(self.bufr_name)]
+        names = [f'{bufr} {self.bufr_name[bufr]}, [{self.bufr_unit[bufr]}]' for bufr in sorted(self.bufr_name)]
         self.table.setRowCount(len(names))
         self.table.setVerticalHeaderLabels(names)
         
@@ -258,13 +258,17 @@ class MainWindow(QMainWindow):
         '''
         print('getting measurements')
         self.meas_for_table = dict()
+        ready = set()
         for station in self.stations:
             print(station, self.stations[station])
-            for r in get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point}):
+            for r in get_json('get', {'stations': station, 'streams': 0, 'point_at': self.point}):                
                 bufr = r['code']
                 station = r['station']
                 value = r['value']
                 unit = r['unit']
+                if (bufr, station) in ready:
+                    continue
+                ready.add((bufr, station))
                 if self.meas_for_table.get(bufr, None) is None:
                     self.meas_for_table[bufr] = dict()
                 try:
